@@ -1,4 +1,11 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  type Relation,
+} from 'typeorm';
+import { Workout } from '../../workouts/entities/workout.entity.js';
 
 @Entity('users')
 export class User {
@@ -13,4 +20,7 @@ export class User {
 
   @Column()
   password: string;
+
+  @OneToMany(() => Workout, (workout) => workout.user)
+  workouts: Relation<Workout[]>;
 }

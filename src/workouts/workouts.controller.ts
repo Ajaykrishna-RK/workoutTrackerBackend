@@ -7,17 +7,12 @@ import {
   Patch,
   Post,
   Req,
-  UseGuards,
 } from '@nestjs/common';
-import type { Request } from 'express';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import type { AuthenticatedRequest } from '../common/types/authenticated-request.js';
 import { CreateWorkoutDto } from './dto/create-workout.dto.js';
 import { UpdateWorkoutDto } from './dto/update-workout.dto.js';
 import { WorkoutsService } from './workouts.service.js';
 
-type AuthenticatedRequest = Request & { user: { userId: string } };
-
-@UseGuards(JwtAuthGuard)
 @Controller('workouts')
 export class WorkoutsController {
   constructor(private readonly workoutsService: WorkoutsService) {}
