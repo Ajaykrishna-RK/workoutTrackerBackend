@@ -1,15 +1,14 @@
 import {
-  HttpException,
-  InternalServerErrorException,
   Injectable,
   NotFoundException,
-  BadRequestException,
 } from '@nestjs/common';
+import { handleError, handleSuccess } from '../common/utils/response.util.js';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateWorkoutDto } from './dto/create-workout.dto.js';
 import { UpdateWorkoutDto } from './dto/update-workout.dto.js';
 import { Workout } from './entities/workout.entity.js';
+import { validateWorkout } from './validate/workoutValidation.js';
 
 @Injectable()
 export class WorkoutsService {
@@ -25,7 +24,7 @@ export class WorkoutsService {
         order: { createdAt: 'DESC' },
       });
     } catch (error) {
-      this.handleError(error, 'Failed to retrieve workouts');
+      handleError(error, 'Failed to retrieve workouts');
     }
   }
 
@@ -35,13 +34,13 @@ export class WorkoutsService {
       if (!workout) throw new NotFoundException('Workout not found');
       return workout;
     } catch (error) {
-      this.handleError(error, 'Failed to retrieve workout');
+      handleError(error, 'Failed to retrieve workout');
     }
   }
 
   async create(dto: CreateWorkoutDto, userId: string) {
     try {
-      this.validate(dto);
+      validateWorkout(dto);
       const workout = this.workouts.create({
         name: dto.name.trim(),
         exercises: dto.exercises.map((exercise) => ({
@@ -50,25 +49,27 @@ export class WorkoutsService {
         })),
         userId,
       });
-      return await this.workouts.save(workout);
+      const savedWorkout = await this.workouts.save(workout);
+      return handleSuccess('Workout created successfully', { workout: savedWorkout });
     } catch (error) {
-      this.handleError(error, 'Failed to create workout');
+      handleError(error, 'Failed to create workout');
     }
   }
 
   async update(id: string, dto: UpdateWorkoutDto, userId: string) {
     try {
       const workout = await this.findOne(id, userId);
-      this.validate(dto, true);
+      validateWorkout(dto, true);
       if (dto.name !== undefined) workout.name = dto.name.trim();
       if (dto.exercises !== undefined)
         workout.exercises = dto.exercises.map((exercise) => ({
           ...exercise,
           name: exercise.name.trim(),
         }));
-      return await this.workouts.save(workout);
+      const savedWorkout = await this.workouts.save(workout);
+      return handleSuccess('Workout updated successfully', { workout: savedWorkout });
     } catch (error) {
-      this.handleError(error, 'Failed to update workout');
+      handleError(error, 'Failed to update workout');
     }
   }
 
@@ -76,37 +77,11 @@ export class WorkoutsService {
     try {
       const workout = await this.findOne(id, userId);
       await this.workouts.remove(workout);
-      return { message: 'Workout deleted successfully' };
+      return handleSuccess('Workout deleted successfully');
     } catch (error) {
-      this.handleError(error, 'Failed to delete workout');
+      handleError(error, 'Failed to delete workout');
     }
   }
 
-  private handleError(error: unknown, message: string): never {
-    if (error instanceof HttpException) throw error;
-    throw new InternalServerErrorException(message);
-  }
 
-  private validate(dto: CreateWorkoutDto | UpdateWorkoutDto, partial = false) {
-    if (!partial || dto.name !== undefined) {
-      if (!dto.name?.trim())
-        throw new BadRequestException('Workout name is required');
-    }
-    if (!partial || dto.exercises !== undefined) {
-      if (!Array.isArray(dto.exercises))
-        throw new BadRequestException('exercises must be an array');
-      for (const exercise of dto.exercises) {
-        if (
-          !exercise.name?.trim() ||
-          !Number.isInteger(exercise.sets) || exercise.sets <= 0 ||
-          !Number.isInteger(exercise.reps) || exercise.reps <= 0 ||
-          typeof exercise.weight !== 'number' || !Number.isFinite(exercise.weight) || exercise.weight < 0
-        ) {
-          throw new BadRequestException(
-            'Each exercise needs a name, positive sets and reps, and a non-negative weight',
-          );
-        }
-      }
-    }
-  }
 }
