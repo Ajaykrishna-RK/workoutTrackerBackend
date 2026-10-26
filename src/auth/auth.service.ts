@@ -72,6 +72,28 @@ export class AuthService {
     }
   }
 
+  async refresh(refreshToken: string) {
+    try {
+      const payload = await this.jwtService.verifyAsync<{
+        sub: string;
+        email: string;
+        tokenUse: string;
+      }>(refreshToken, {
+        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      });
+      if (payload.tokenUse !== 'refresh') {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      const user = await this.users.findOne({ where: { id: payload.sub } });
+      if (!user) throw new UnauthorizedException('User no longer exists');
+      return await this.issueToken(user);
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+  }
+
   private isUniqueConstraintError(error: unknown): boolean {
     return (
       typeof error === 'object' &&
@@ -85,13 +107,29 @@ export class AuthService {
     const accessToken = await this.jwtService.signAsync({
       sub: user.id,
       email: user.email,
+      tokenUse: 'access',
     });
+    const refreshExpiresIn = this.configService.get<string>(
+      'JWT_REFRESH_EXPIRES_IN',
+      '7d',
+    );
+    const refreshToken = await this.jwtService.signAsync(
+      { sub: user.id, email: user.email, tokenUse: 'refresh' },
+      {
+        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+        expiresIn: refreshExpiresIn as `${number}${'s' | 'm' | 'h' | 'd'}`,
+      },
+    );
     const { password: _password, ...safeUser } = user;
     return {
       accessToken,
+      refreshToken,
       tokenType: 'Bearer',
       expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '1h'),
+      refreshExpiresIn,
       user: safeUser,
     };
   }
+
+  
 }
