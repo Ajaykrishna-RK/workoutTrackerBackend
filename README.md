@@ -31,6 +31,10 @@
 $ npm install
 ```
 
+## API integration
+
+See [API.md](./API.md) for the available endpoints, request payloads, response shapes, and frontend authentication guidance.
+
 ## Compile and run the project
 
 ```bash

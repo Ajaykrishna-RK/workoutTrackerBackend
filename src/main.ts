@@ -6,6 +6,16 @@ async function bootstrap() {
     instrument: ObserveInstrument,
   });
 
+  // CORS_ORIGIN: comma-separated list of allowed origins; unset allows any origin
+  const corsOrigin = process.env.CORS_ORIGIN?.split(',').map((o) => o.trim());
+
+  app.enableCors({
+    origin: corsOrigin ?? true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+  });
+
   const port = process.env.PORT ?? 3000;
 
   await app.listen(port, '0.0.0.0');
