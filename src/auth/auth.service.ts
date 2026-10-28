@@ -4,6 +4,7 @@ import {
   HttpException,
   InternalServerErrorException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -17,11 +18,17 @@ import { RegisterDto } from './dto/register.dto.js';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+  // Read at startup so a missing secret fails the boot instead of every register/login request
+  private readonly refreshSecret: string;
+
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    this.refreshSecret = this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
+  }
 
   async register(dto: RegisterDto) {
     try {
@@ -54,6 +61,7 @@ export class AuthService {
       if (this.isUniqueConstraintError(error)) {
         throw new ConflictException('An account with this email already exists');
       }
+      this.logger.error('Registration failed', error instanceof Error ? error.stack : error);
       throw new InternalServerErrorException('Registration failed');
     }
   }
@@ -68,6 +76,7 @@ export class AuthService {
       return await this.issueToken(user);
     } catch (error) {
       if (error instanceof HttpException) throw error;
+      this.logger.error('Login failed', error instanceof Error ? error.stack : error);
       throw new InternalServerErrorException('Login failed');
     }
   }
@@ -79,7 +88,7 @@ export class AuthService {
         email: string;
         tokenUse: string;
       }>(refreshToken, {
-        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+        secret: this.refreshSecret,
       });
       if (payload.tokenUse !== 'refresh') {
         throw new UnauthorizedException('Invalid refresh token');
@@ -116,7 +125,7 @@ export class AuthService {
     const refreshToken = await this.jwtService.signAsync(
       { sub: user.id, email: user.email, tokenUse: 'refresh' },
       {
-        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+        secret: this.refreshSecret,
         expiresIn: refreshExpiresIn as `${number}${'s' | 'm' | 'h' | 'd'}`,
       },
     );
