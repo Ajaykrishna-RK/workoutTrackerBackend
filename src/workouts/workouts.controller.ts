@@ -6,10 +6,12 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
 import type { AuthenticatedRequest } from '../common/types/authenticated-request.js';
 import { CreateWorkoutDto } from './dto/create-workout.dto.js';
+import { FindWorkoutsQueryDto } from './dto/find-workouts-query.dto.js';
 import { UpdateWorkoutDto } from './dto/update-workout.dto.js';
 import { WorkoutsService } from './workouts.service.js';
 
@@ -26,8 +28,11 @@ export class WorkoutsController {
   }
 
   @Get()
-  findAll(@Req() request: AuthenticatedRequest) {
-    return this.workoutsService.findAll(request.user.userId);
+  findAll(
+    @Query() query: FindWorkoutsQueryDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.workoutsService.findAll(request.user.userId, query);
   }
 
   @Get(':id')

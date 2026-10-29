@@ -175,7 +175,40 @@ Success (`201 Created`):
 
 `GET /workouts`
 
-Success (`200 OK`): an array of the signed-in user's workout objects, newest first. An account with no workouts receives `[]`.
+Query parameters (all optional):
+
+| Param | Description |
+| --- | --- |
+| `range` | `7d`, `15d`, `30d`, `3m`, `6m`, `1y` (relative to now), or `custom`. Omit for all workouts. |
+| `from` | Start date, only with `range=custom`. ISO date or datetime, e.g. `2026-10-01`. |
+| `to` | End date, only with `range=custom`. A date-only value (`2026-10-15`) includes that whole day (UTC). |
+| `page` | Page number, starting at `1`. Default `1`. |
+| `limit` | Items per page, `1`–`100`. Default `10`. |
+
+`range=custom` needs at least one of `from` or `to`; `from` must not be after `to`.
+
+Examples:
+
+```http
+GET /workouts?range=30d&page=2&limit=20
+GET /workouts?range=custom&from=2026-09-01&to=2026-09-30
+```
+
+Success (`200 OK`): the signed-in user's workouts, newest first, with pagination info. `data` is `[]` when nothing matches.
+
+```json
+{
+  "data": [ /* workout objects */ ],
+  "meta": {
+    "page": 2,
+    "limit": 20,
+    "total": 45,
+    "totalPages": 3
+  }
+}
+```
+
+Common error: `400` for an unknown `range`, an invalid date, `from` after `to`, `from`/`to` without `range=custom`, or a non-positive `page`/`limit` (or `limit` over 100).
 
 ### Get one workout
 
