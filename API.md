@@ -34,10 +34,8 @@ Success (`201 Created`):
 ```json
 {
   "accessToken": "<jwt>",
-  "refreshToken": "<jwt>",
   "tokenType": "Bearer",
   "expiresIn": "1h",
-  "refreshExpiresIn": "7d",
   "user": {
     "id": "<uuid>",
     "name": "Alex Runner",
@@ -46,7 +44,9 @@ Success (`201 Created`):
 }
 ```
 
-The expiration values shown are defaults and can be changed through server configuration. The password is not included in the response.
+The expiration value shown is a default and can be changed through server configuration. The password is not included in the response.
+
+The refresh token is not in the response body. It is set as an httpOnly `refreshToken` cookie (path `/auth`, default lifetime 7 days) that JavaScript cannot read. Browser clients must send requests to `/auth/*` with credentials (`fetch(..., { credentials: 'include' })` or `axios` `withCredentials: true`) so the cookie is stored and sent back.
 
 Common errors: `400` for invalid email or a password shorter than 8 characters; `409` if the email is already registered.
 
@@ -67,21 +67,21 @@ Success (`201 Created`): same response shape as registration.
 
 Common error: `401` for invalid credentials.
 
-### Refresh tokens
+### Refresh the access token
 
 `POST /auth/refresh`
 
-Request:
+No request body. Call this when the access token has expired (for example after a `401` from a workout endpoint). The browser sends the `refreshToken` cookie automatically when the request is made with credentials; this endpoint does not use the bearer header.
 
-```json
-{
-  "refreshToken": "<refresh-jwt>"
-}
-```
+Success (`201 Created`): a new access token with the same response shape as registration and login. The refresh token cookie is also rotated.
 
-Success (`201 Created`): a newly issued token response with the same shape as registration and login. Send the refresh token in the request body; this endpoint does not use the bearer header.
+Common error: `401` if the refresh cookie is missing, invalid, expired, or belongs to a user that no longer exists.
 
-Common error: `401` if the refresh token is invalid, expired, or belongs to a user that no longer exists.
+### Log out
+
+`POST /auth/logout`
+
+No request body. Clears the refresh token cookie. Returns `204 No Content`. The client should also discard its stored access token.
 
 ### Get the signed-in profile
 

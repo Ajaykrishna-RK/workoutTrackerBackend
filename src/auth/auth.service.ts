@@ -81,8 +81,9 @@ export class AuthService {
     }
   }
 
-  async refresh(refreshToken: string) {
+  async refresh(refreshToken: string | undefined) {
     try {
+      if (!refreshToken) throw new UnauthorizedException('Missing refresh token');
       const payload = await this.jwtService.verifyAsync<{
         sub: string;
         email: string;
@@ -112,6 +113,8 @@ export class AuthService {
     );
   }
 
+  // The refresh token is returned separately so the controller can set it as an
+  // httpOnly cookie; only `body` is sent to the client as JSON
   private async issueToken(user: User) {
     const accessToken = await this.jwtService.signAsync({
       sub: user.id,
@@ -131,14 +134,22 @@ export class AuthService {
     );
     const { password: _password, ...safeUser } = user;
     return {
-      accessToken,
       refreshToken,
-      tokenType: 'Bearer',
-      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '1h'),
-      refreshExpiresIn,
-      user: safeUser,
+      refreshMaxAgeMs: this.durationToMs(refreshExpiresIn),
+      body: {
+        accessToken,
+        tokenType: 'Bearer',
+        expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '1h'),
+        user: safeUser,
+      },
     };
   }
 
-  
+  private durationToMs(duration: string): number {
+    const match = /^(\d+)\s*([smhd])?$/.exec(duration.trim());
+    if (!match) return 7 * 24 * 60 * 60 * 1000;
+    const units = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 };
+    // A bare number is treated as seconds, matching jsonwebtoken's expiresIn
+    return Number(match[1]) * units[(match[2] ?? 's') as keyof typeof units];
+  }
 }
