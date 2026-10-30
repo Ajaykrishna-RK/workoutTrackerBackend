@@ -67,7 +67,6 @@ function parsePositiveInt(value: string | undefined, field: string): number | un
   return parsed;
 }
 
-// A date-only `to` (YYYY-MM-DD) covers that whole day in UTC
 function parseDate(value: string | undefined, field: string, endOfDay: boolean): Date | undefined {
   if (value === undefined || value === '') return undefined;
   const date = new Date(value);

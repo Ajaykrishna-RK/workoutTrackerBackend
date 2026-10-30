@@ -6,7 +6,6 @@ async function bootstrap() {
     instrument: ObserveInstrument,
   });
 
-  // CORS_ORIGIN: comma-separated list of allowed origins; unset allows any origin
   const corsOrigin = process.env.CORS_ORIGIN?.split(',').map((o) => o.trim());
 
   app.enableCors({

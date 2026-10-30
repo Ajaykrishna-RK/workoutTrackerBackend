@@ -19,7 +19,6 @@ import { RegisterDto } from './dto/register.dto.js';
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  // Read at startup so a missing secret fails the boot instead of every register/login request
   private readonly refreshSecret: string;
 
   constructor(
@@ -113,8 +112,6 @@ export class AuthService {
     );
   }
 
-  // The refresh token is returned separately so the controller can set it as an
-  // httpOnly cookie; only `body` is sent to the client as JSON
   private async issueToken(user: User) {
     const accessToken = await this.jwtService.signAsync({
       sub: user.id,
@@ -149,7 +146,6 @@ export class AuthService {
     const match = /^(\d+)\s*([smhd])?$/.exec(duration.trim());
     if (!match) return 7 * 24 * 60 * 60 * 1000;
     const units = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 };
-    // A bare number is treated as seconds, matching jsonwebtoken's expiresIn
     return Number(match[1]) * units[(match[2] ?? 's') as keyof typeof units];
   }
 }

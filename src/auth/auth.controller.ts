@@ -7,12 +7,10 @@ import { RegisterDto } from './dto/register.dto.js';
 
 const REFRESH_COOKIE = 'refreshToken';
 
-// COOKIE_SAME_SITE: set to "none" when the frontend is on a different site than the API
 const refreshCookieOptions = (): CookieOptions => {
   const sameSite = (process.env.COOKIE_SAME_SITE ?? 'lax') as CookieOptions['sameSite'];
   return {
     httpOnly: true,
-    // SameSite=None is rejected by browsers unless the cookie is also Secure
     secure: process.env.NODE_ENV === 'production' || sameSite === 'none',
     sameSite,
     path: '/auth',
@@ -62,7 +60,6 @@ export class AuthController {
     return tokens.body;
   }
 
-  // Parsed by hand to avoid pulling in cookie-parser for a single cookie
   private readCookie(req: Request, name: string): string | undefined {
     for (const part of req.headers.cookie?.split(';') ?? []) {
       const [key, ...value] = part.trim().split('=');
